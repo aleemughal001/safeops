@@ -1,0 +1,26 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: safeops-readonly
+  namespace: {{ .Values.safeops.namespaceToWatch }}
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "services", "events", "namespaces"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: ["apps"]
+    resources: ["deployments", "replicasets"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: safeops-readonly-binding
+  namespace: {{ .Values.safeops.namespaceToWatch }}
+subjects:
+  - kind: ServiceAccount
+    name: safeops-agent
+    namespace: {{ .Release.Namespace }}
+roleRef:
+  kind: Role
+  name: safeops-readonly
+  apiGroup: rbac.authorization.k8s.io

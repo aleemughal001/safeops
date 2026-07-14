@@ -1,0 +1,14 @@
+{
+  "incident_id": "inc_checkout_001",
+  "service": "checkout-api",
+  "namespace": "demo",
+  "root_cause": "The latest deployment likely removed or misconfigured REDIS_URL for checkout-api.",
+  "confidence": 0.87,
+  "evidence": [
+    "Pod checkout-api entered CrashLoopBackOff.",
+    "Logs show missing required environment variable REDIS_URL.",
+    "Deployment was updated shortly before crash."
+  ],
+  "recommended_action": "Rollback checkout-api to previous stable version.",
+  "approval_required": true
+}

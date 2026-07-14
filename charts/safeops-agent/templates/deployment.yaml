@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: safeops-agent
+  namespace: {{ .Release.Namespace }}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: safeops-agent
+  template:
+    metadata:
+      labels:
+        app: safeops-agent
+    spec:
+      serviceAccountName: safeops-agent
+      containers:
+        - name: collector
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          env:
+            - name: SAFEOPS_BACKEND_URL
+              value: {{ .Values.safeops.backendUrl | quote }}
+            - name: SAFEOPS_NAMESPACE
+              value: {{ .Values.safeops.namespaceToWatch | quote }}
+            - name: SAFEOPS_POLL_SECONDS
+              value: {{ .Values.safeops.pollSeconds | quote }}
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 256Mi

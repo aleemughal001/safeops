@@ -1,0 +1,23 @@
+allowed_actions:
+  - id: rollout_undo_deployment
+    resource: deployment
+    approval_required: true
+    risk_level: low
+  - id: rollout_restart_deployment
+    resource: deployment
+    approval_required: true
+    risk_level: low
+  - id: rerun_pipeline
+    resource: pipeline
+    approval_required: true
+    risk_level: low
+  - id: create_issue
+    resource: issue
+    approval_required: false
+    risk_level: none
+blocked_actions:
+  - delete_namespace
+  - delete_secret
+  - edit_secret
+  - run_arbitrary_command
+  - modify_iam_policy

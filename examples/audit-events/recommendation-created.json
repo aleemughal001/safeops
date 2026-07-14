@@ -1,0 +1,14 @@
+{
+  "event_id": "evt_example_001",
+  "incident_id": "inc_checkout_001",
+  "timestamp": "2026-07-07T12:00:00Z",
+  "event_type": "recommendation.created",
+  "actor": "safeops.incident_engine",
+  "details": {
+    "service": "checkout-api",
+    "root_cause": "The latest deployment likely removed or misconfigured REDIS_URL.",
+    "confidence": 0.87,
+    "recommended_action": "rollout_undo_deployment",
+    "approval_required": true
+  }
+}

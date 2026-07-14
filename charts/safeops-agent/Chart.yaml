@@ -1,0 +1,6 @@
+apiVersion: v2
+name: safeops-agent
+description: SafeOps Kubernetes read-only collector
+version: 0.1.0
+appVersion: "0.1.0"
+type: application

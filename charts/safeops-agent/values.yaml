@@ -1,0 +1,12 @@
+image:
+  repository: safeops/collector
+  tag: "0.1.0"
+  pullPolicy: IfNotPresent
+
+safeops:
+  backendUrl: "http://safeops-backend:8000"
+  namespaceToWatch: "demo"
+  pollSeconds: 30
+
+rbac:
+  create: true
