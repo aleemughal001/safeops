@@ -8,7 +8,8 @@ from typing import Any, Dict
 import httpx
 
 EXECUTOR_URL = os.getenv("SAFEOPS_EXECUTOR_URL", "http://localhost:8010")
-REQUEST_TIMEOUT_SECONDS = float(os.getenv("SAFEOPS_EXECUTOR_TIMEOUT_SECONDS", "10"))
+# Real Kubernetes verification can take more than 10 seconds while pods roll out.
+REQUEST_TIMEOUT_SECONDS = float(os.getenv("SAFEOPS_EXECUTOR_TIMEOUT_SECONDS", "90"))
 
 
 class ExecutorUnavailable(RuntimeError):
