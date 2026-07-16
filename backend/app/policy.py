@@ -46,14 +46,28 @@ def find_allowed_action(action_id: str) -> Optional[Dict[str, Any]]:
     return None
 
 
+def _check_allowed_parameters(action: Dict[str, Any], parameters: Dict[str, Any]) -> Optional[str]:
+    allowed_parameters = action.get("allowed_parameters") or {}
+    for key, expected_value in allowed_parameters.items():
+        actual_value = parameters.get(key)
+        if actual_value != expected_value:
+            return (
+                f"Parameter {key!r} is not permitted for this action. "
+                f"Expected {expected_value!r}, got {actual_value!r}."
+            )
+    return None
+
+
 def check_action_policy(
     action_id: str,
     approved: bool,
     namespace: Optional[str] = None,
     service: Optional[str] = None,
+    parameters: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     policy = load_policy()
     blocked = _blocked_actions(policy)
+    parameters = parameters or {}
 
     if action_id in blocked:
         return {
@@ -95,6 +109,14 @@ def check_action_policy(
             "action_id": action_id,
         }
 
+    parameter_error = _check_allowed_parameters(action, parameters)
+    if parameter_error:
+        return {
+            "allowed": False,
+            "reason": parameter_error,
+            "action_id": action_id,
+        }
+
     return {
         "allowed": True,
         "reason": "Action is allowlisted and approval requirements are satisfied.",
@@ -102,4 +124,5 @@ def check_action_policy(
         "resource": action.get("resource"),
         "approval_required": approval_required,
         "risk_level": action.get("risk_level", "unknown"),
+        "validated_parameters": parameters,
     }

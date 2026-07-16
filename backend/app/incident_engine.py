@@ -1,6 +1,9 @@
 from typing import Dict, Any, List
 
 
+SAFE_REDIS_URL = "redis://redis.demo.svc.cluster.local:6379"
+
+
 def _contains(texts: List[str], keyword: str) -> bool:
     joined = " ".join(texts).lower()
     return keyword.lower() in joined
@@ -10,7 +13,7 @@ def analyze_incident(payload: Dict[str, Any]) -> Dict[str, Any]:
     """Simple MVP rule-based incident explanation.
 
     Later this will call an AI agent with sanitized evidence, RAG, incident memory,
-    and policy context. For the first prototype, deterministic rules keep the demo safe.
+    and policy context. For the prototype, deterministic rules keep the demo safe.
     """
     symptoms = payload.get("symptoms", [])
     evidence_summaries = [e.get("summary", "") for e in payload.get("evidence", [])]
@@ -34,16 +37,27 @@ def analyze_incident(payload: Dict[str, Any]) -> Dict[str, Any]:
             "redis_url",
             "missing required environment variable redis_url",
             "missing expected environment variable redis_url",
+            "env_names=[]",
+            "environment:\t<none>",
         ]
     )
 
+    suggested_parameters: Dict[str, Any] = {}
+
     if has_crashloop_signal and has_redis_signal:
         root_cause = f"The latest deployment likely removed or misconfigured REDIS_URL for {service}."
-        confidence = 0.87
-        recommendation = "Rollback the deployment to the previous stable version."
-        action_id = "rollout_undo_deployment"
+        confidence = 0.89
+        recommendation = (
+            "Restore the missing REDIS_URL environment variable on the deployment, "
+            "then verify the rollout and pod readiness."
+        )
+        action_id = "set_env_deployment"
         risk_level = "low"
         blast_radius = f"{service} in namespace {namespace} only"
+        suggested_parameters = {
+            "env_name": "REDIS_URL",
+            "env_value": SAFE_REDIS_URL,
+        }
     elif has_crashloop_signal:
         root_cause = f"{service} is repeatedly crashing after deployment. SafeOps found restart/backoff evidence, but needs stronger config/log/CI-CD context for exact root cause."
         confidence = 0.62
@@ -66,6 +80,16 @@ def analyze_incident(payload: Dict[str, Any]) -> Dict[str, Any]:
         risk_level = "unknown"
         blast_radius = "unknown"
 
+    recommended_action: Dict[str, Any] = {
+        "action_id": action_id,
+        "description": recommendation,
+        "approval_required": True,
+        "risk_level": risk_level,
+        "blast_radius": blast_radius,
+    }
+    if suggested_parameters:
+        recommended_action["parameters"] = suggested_parameters
+
     return {
         "incident_id": payload.get("incident_id"),
         "service": service,
@@ -73,16 +97,11 @@ def analyze_incident(payload: Dict[str, Any]) -> Dict[str, Any]:
         "root_cause": root_cause,
         "confidence": confidence,
         "evidence": payload.get("evidence", []),
-        "recommended_action": {
-            "action_id": action_id,
-            "description": recommendation,
-            "approval_required": True,
-            "risk_level": risk_level,
-            "blast_radius": blast_radius,
-        },
+        "recommended_action": recommended_action,
         "verification_plan": [
             "Check rollout status",
             "Check pod readiness",
+            "Confirm REDIS_URL is present on the deployment",
             "Check service health endpoint",
             "Check error rate recovery",
         ],

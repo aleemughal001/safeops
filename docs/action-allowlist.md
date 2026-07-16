@@ -10,6 +10,7 @@ examples/policies/safe-actions.yaml
 
 Currently allowed:
 
+- `set_env_deployment`
 - `rollout_undo_deployment`
 - `rollout_restart_deployment`
 - `rerun_pipeline`
@@ -25,13 +26,26 @@ Currently blocked:
 
 ## Runtime Enforcement
 
-The allowlist is now enforced in code by:
+The allowlist is enforced in code by:
 
 ```text
 backend/app/policy.py
 ```
 
 The executor also performs a local safety check before execution.
+
+## Milestone 5 Smart Remediation Guardrail
+
+`set_env_deployment` is intentionally narrow in the local demo. By default, it only allows:
+
+```text
+namespace: demo
+service/deployment: checkout-api
+env_name: REDIS_URL
+env_value: redis://redis.demo.svc.cluster.local:6379
+```
+
+This prevents arbitrary environment edits and keeps the prototype safe.
 
 ## Rule
 

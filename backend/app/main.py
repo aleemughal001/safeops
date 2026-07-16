@@ -123,6 +123,7 @@ def approve(payload: ApprovalInput) -> Dict[str, Any]:
             approved=payload.approved,
             namespace=incident.get("namespace"),
             service=incident.get("service"),
+            parameters=payload.parameters,
         )
     except PolicyError as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc

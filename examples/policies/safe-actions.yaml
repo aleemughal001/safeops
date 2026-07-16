@@ -1,12 +1,31 @@
 allowed_actions:
+  - id: set_env_deployment
+    resource: deployment
+    approval_required: true
+    risk_level: low
+    namespaces:
+      - demo
+    services:
+      - checkout-api
+    allowed_parameters:
+      env_name: REDIS_URL
+      env_value: redis://redis.demo.svc.cluster.local:6379
   - id: rollout_undo_deployment
     resource: deployment
     approval_required: true
     risk_level: low
+    namespaces:
+      - demo
+    services:
+      - checkout-api
   - id: rollout_restart_deployment
     resource: deployment
     approval_required: true
     risk_level: low
+    namespaces:
+      - demo
+    services:
+      - checkout-api
   - id: rerun_pipeline
     resource: pipeline
     approval_required: true

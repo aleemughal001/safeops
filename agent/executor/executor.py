@@ -11,6 +11,7 @@ Safety rules for this prototype:
 - No delete operations.
 - Real Kubernetes actions are restricted by environment allowlists.
 - Default real-action scope is namespace=demo and service/deployment=checkout-api.
+- Smart env remediation is restricted to REDIS_URL with a known-good value.
 
 This service must run with narrowly scoped Kubernetes RBAC in real deployments.
 """
@@ -35,12 +36,14 @@ except Exception:  # Kubernetes dependency may not be installed in backend-only 
     config = None  # type: ignore
     ConfigException = Exception  # type: ignore
 
-app = FastAPI(title="SafeOps Executor", version="0.3.0")
+app = FastAPI(title="SafeOps Executor", version="0.4.0")
 
 EXECUTOR_MODE = os.getenv("SAFEOPS_EXECUTOR_MODE", "simulate")  # simulate | kubernetes
-VERIFY_TIMEOUT_SECONDS = int(os.getenv("SAFEOPS_VERIFY_TIMEOUT_SECONDS", "60"))
+VERIFY_TIMEOUT_SECONDS = int(os.getenv("SAFEOPS_VERIFY_TIMEOUT_SECONDS", "90"))
 VERIFY_INTERVAL_SECONDS = float(os.getenv("SAFEOPS_VERIFY_INTERVAL_SECONDS", "2"))
 KUBECTL_BIN = os.getenv("SAFEOPS_KUBECTL_BIN", "kubectl")
+
+DEFAULT_REDIS_URL = "redis://redis.demo.svc.cluster.local:6379"
 
 
 def _env_set(name: str, default_csv: str) -> set[str]:
@@ -52,8 +55,15 @@ def _env_set(name: str, default_csv: str) -> set[str]:
 # executor must protect itself even if a caller bypasses the backend.
 ALLOWED_K8S_NAMESPACES = _env_set("SAFEOPS_ALLOWED_K8S_NAMESPACES", "demo")
 ALLOWED_K8S_SERVICES = _env_set("SAFEOPS_ALLOWED_K8S_SERVICES", "checkout-api")
+ALLOWED_ENV_NAMES = _env_set("SAFEOPS_ALLOWED_ENV_NAMES", "REDIS_URL")
+ALLOWED_REDIS_URL = os.getenv("SAFEOPS_ALLOWED_REDIS_URL", DEFAULT_REDIS_URL)
 
 ALLOWED_ACTIONS = {
+    "set_env_deployment": {
+        "description": "Set a tightly allowlisted environment variable on a Kubernetes deployment.",
+        "approval_required": True,
+        "resource": "deployment",
+    },
     "rollout_undo_deployment": {
         "description": "Roll back a Kubernetes deployment to the previous stable version.",
         "approval_required": True,
@@ -112,6 +122,7 @@ def health() -> Dict[str, Any]:
         "mode": EXECUTOR_MODE,
         "allowed_namespaces": sorted(ALLOWED_K8S_NAMESPACES),
         "allowed_services": sorted(ALLOWED_K8S_SERVICES),
+        "allowed_env_names": sorted(ALLOWED_ENV_NAMES),
     }
 
 
@@ -155,6 +166,36 @@ def _guard_kubernetes_scope(namespace: str, service: str) -> None:
         )
 
 
+def _guard_set_env_parameters(parameters: Dict[str, Any]) -> tuple[str, str]:
+    env_name = str(parameters.get("env_name", ""))
+    env_value = str(parameters.get("env_value", ""))
+
+    if env_name not in ALLOWED_ENV_NAMES:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "allowed": False,
+                "reason": f"Environment variable {env_name!r} is outside executor allowlist.",
+                "allowed_env_names": sorted(ALLOWED_ENV_NAMES),
+            },
+        )
+
+    if env_name == "REDIS_URL" and env_value != ALLOWED_REDIS_URL:
+        raise HTTPException(
+            status_code=403,
+            detail={
+                "allowed": False,
+                "reason": "REDIS_URL value is not the approved known-good demo value.",
+                "expected_value": ALLOWED_REDIS_URL,
+            },
+        )
+
+    if not env_value:
+        raise HTTPException(status_code=403, detail="env_value is required for set_env_deployment.")
+
+    return env_name, env_value
+
+
 def _run_kubectl(args: List[str], timeout: int = 30) -> Dict[str, Any]:
     """Run a fixed kubectl argv list. Never use shell=True."""
     command = [KUBECTL_BIN] + args
@@ -185,6 +226,7 @@ def _simulate_execute(request: ExecuteRequest) -> Dict[str, Any]:
         "action_id": request.action_id,
         "service": request.service,
         "namespace": request.namespace,
+        "parameters": request.parameters,
         "message": f"Simulated {request.action_id} for deployment/{request.service} in namespace {request.namespace}.",
         "started_at": datetime.now(timezone.utc).isoformat(),
         "finished_at": datetime.now(timezone.utc).isoformat(),
@@ -204,8 +246,26 @@ def _kubernetes_execute(request: ExecuteRequest) -> Dict[str, Any]:
         return result
 
     started_at = datetime.now(timezone.utc).isoformat()
+    kubectl_result: Optional[Dict[str, Any]] = None
 
-    if request.action_id == "rollout_undo_deployment":
+    if request.action_id == "set_env_deployment":
+        env_name, env_value = _guard_set_env_parameters(request.parameters)
+        kubectl_result = _run_kubectl(
+            [
+                "-n",
+                request.namespace,
+                "set",
+                "env",
+                f"deployment/{request.service}",
+                f"{env_name}={env_value}",
+            ],
+            timeout=30,
+        )
+        if kubectl_result["returncode"] != 0:
+            raise HTTPException(status_code=500, detail={"kubectl": kubectl_result})
+        message = kubectl_result["stdout"] or f"Set {env_name} on deployment/{request.service}."
+
+    elif request.action_id == "rollout_undo_deployment":
         # Fixed argv only. This is not arbitrary command execution.
         kubectl_result = _run_kubectl(
             ["-n", request.namespace, "rollout", "undo", f"deployment/{request.service}"],
@@ -234,7 +294,6 @@ def _kubernetes_execute(request: ExecuteRequest) -> Dict[str, Any]:
             namespace=request.namespace,
             body=patch_body,
         )
-        kubectl_result = None
         message = f"Restarted deployment/{request.service}."
 
     else:
@@ -247,6 +306,7 @@ def _kubernetes_execute(request: ExecuteRequest) -> Dict[str, Any]:
         "action_id": request.action_id,
         "service": request.service,
         "namespace": request.namespace,
+        "parameters": request.parameters,
         "message": message,
         "kubectl": kubectl_result,
         "started_at": started_at,
@@ -281,13 +341,14 @@ def _simulate_verify(request: VerifyRequest) -> Dict[str, Any]:
     }
 
 
-def _deployment_health_snapshot(namespace: str, service: str) -> Dict[str, Any]:
+def _deployment_health_snapshot(namespace: str, service: str, parameters: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
     _load_kube_config()
     apps_api = client.AppsV1Api()  # type: ignore[union-attr]
     core_api = client.CoreV1Api()  # type: ignore[union-attr]
 
     checks = []
     healthy = True
+    parameters = parameters or {}
 
     deployment = apps_api.read_namespaced_deployment(name=service, namespace=namespace)
     desired = deployment.spec.replicas or 0
@@ -304,6 +365,21 @@ def _deployment_health_snapshot(namespace: str, service: str) -> Dict[str, Any]:
         }
     )
     healthy = healthy and rollout_passed
+
+    expected_env_name = parameters.get("env_name")
+    expected_env_value = parameters.get("env_value")
+    if expected_env_name and expected_env_value:
+        container = deployment.spec.template.spec.containers[0]
+        env_map = {env.name: env.value for env in (container.env or [])}
+        env_passed = env_map.get(expected_env_name) == expected_env_value
+        checks.append(
+            {
+                "name": "deployment_env",
+                "status": "passed" if env_passed else "failed",
+                "detail": f"{expected_env_name} present={expected_env_name in env_map}",
+            }
+        )
+        healthy = healthy and env_passed
 
     pods = core_api.list_namespaced_pod(namespace=namespace, label_selector=f"app={service}")
     active_pods = [pod for pod in pods.items if pod.metadata.deletion_timestamp is None]
@@ -344,7 +420,11 @@ def _kubernetes_verify(request: VerifyRequest) -> Dict[str, Any]:
     last_snapshot: Dict[str, Any] = {"healthy": False, "checks": []}
     while time.time() <= deadline:
         try:
-            last_snapshot = _deployment_health_snapshot(request.namespace, request.service)
+            last_snapshot = _deployment_health_snapshot(
+                request.namespace,
+                request.service,
+                parameters=request.parameters,
+            )
             if last_snapshot["healthy"]:
                 break
         except Exception as exc:
