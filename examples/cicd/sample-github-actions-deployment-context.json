@@ -1,0 +1,16 @@
+{
+  "schema_version": "safeops.cicd_context.v1",
+  "provider": "github-actions",
+  "repository": "https://github.com/aleemughal001/safeops.git",
+  "branch": "main",
+  "workflow": "deploy-checkout-api",
+  "deployment_status": "success",
+  "service": "checkout-api",
+  "namespace": "demo",
+  "changed_files": [
+    "demo/k8s/checkout-api-broken.yaml"
+  ],
+  "detected_change": "REDIS_URL was removed or not included in the deployed manifest.",
+  "likely_contribution": "The deployment likely caused checkout-api CrashLoopBackOff because the app requires REDIS_URL.",
+  "next_prevention_step": "Create a prevention PR that fails CI/CD if REDIS_URL is missing."
+}
