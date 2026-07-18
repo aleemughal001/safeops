@@ -1,0 +1,34 @@
+{
+  "schema_version": "safeops.slack_approval.v1",
+  "channel": "#safeops-approvals",
+  "incident_id": "inc_checkout-api_1234567890",
+  "service": "checkout-api",
+  "namespace": "demo",
+  "severity": "high",
+  "status": "waiting_for_human_approval",
+  "root_cause_summary": "REDIS_URL is missing or misconfigured after a deployment.",
+  "cicd_context": {
+    "detected_change": "Required environment variable REDIS_URL exists in the known-good manifest but is missing from the deployed/broken manifest.",
+    "likely_contribution": "The latest deployment likely removed or failed to include REDIS_URL, matching the Kubernetes CrashLoopBackOff evidence.",
+    "correlation_level": "high-correlation"
+  },
+  "recommended_action": {
+    "action_id": "set_env_deployment",
+    "description": "Restore REDIS_URL on deployment/checkout-api.",
+    "risk_level": "low",
+    "blast_radius": "checkout-api in namespace demo only",
+    "command_preview": "kubectl -n demo set env deployment/checkout-api REDIS_URL=redis://redis.demo.svc.cluster.local:6379"
+  },
+  "buttons": [
+    "approve_fix",
+    "reject",
+    "create_prevention_pr_instead"
+  ],
+  "safety_controls": [
+    "human_approval_required",
+    "policy_allowlist_required",
+    "scoped_executor",
+    "post_action_verification",
+    "tamper_evident_audit"
+  ]
+}
