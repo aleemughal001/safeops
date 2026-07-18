@@ -16,6 +16,7 @@ echo
 ./scripts/demo_approve_prompt.sh
 ./scripts/demo_verify.sh
 ./scripts/demo_report.sh
+./scripts/demo_prevention_recommend.sh
 
 echo
 echo "Full demo completed."
