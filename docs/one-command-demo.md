@@ -1,80 +1,68 @@
-# One-command repeatable demo
+# One-Command Demo
 
-Milestone 7 turns the SafeOps prototype into a repeatable local demo.
+SafeOps includes a repeatable local demo that breaks a Kubernetes deployment, analyzes the incident, requests human approval, applies a safe remediation, verifies recovery, and prints a clean incident report.
 
-The goal is to make the full flow easy to run without manually copying every command:
-
-1. prepare the kind cluster and demo application,
-2. start the SafeOps backend and Kubernetes-mode executor,
-3. reset the application to a known-good state,
-4. break the deployment by removing `REDIS_URL`,
-5. collect real Kubernetes evidence,
-6. approve the smart remediation,
-7. verify that Kubernetes recovered,
-8. verify the SafeOps audit chain.
-
-## Full demo
+## Full interactive demo
 
 ```bash
 ./scripts/demo_run_full.sh
 ```
 
-This leaves the backend and executor running in the background. Stop them with:
+The script will:
+
+1. Check or create the local kind cluster.
+2. Build and load the checkout-api demo image.
+3. Apply the known-good Kubernetes manifest.
+4. Start the SafeOps executor and backend.
+5. Reset checkout-api to a healthy state.
+6. Apply a broken manifest that removes `REDIS_URL`.
+7. Run the Kubernetes collector.
+8. Analyze the incident.
+9. Show a human approval prompt.
+10. Apply the approved safe remediation.
+11. Verify Kubernetes recovery.
+12. Verify the audit log.
+13. Print a clean CLI incident report.
+
+When prompted, type:
+
+```text
+yes
+```
+
+## Non-interactive demo
+
+For recordings or scripted runs:
+
+```bash
+SAFEOPS_AUTO_APPROVE=true ./scripts/demo_run_full.sh
+```
+
+## Stop demo services
 
 ```bash
 ./scripts/demo_stop_services.sh
 ```
 
-Logs are written under:
-
-```text
-/tmp/safeops-demo/logs/
-```
-
-The latest incident ID is saved at:
-
-```text
-/tmp/safeops-demo/latest_incident_id
-```
-
-## Step-by-step demo
+## Individual steps
 
 ```bash
 ./scripts/demo_setup.sh
 ./scripts/demo_start_services.sh
-./scripts/demo_status.sh
 ./scripts/demo_reset_healthy.sh
 ./scripts/demo_break_app.sh
 ./scripts/demo_detect.sh
-./scripts/demo_smart_fix.sh
+./scripts/demo_approve_prompt.sh
 ./scripts/demo_verify.sh
+./scripts/demo_report.sh
 ```
 
-## What this proves
+## Expected result
 
-The repeatable demo proves that SafeOps can perform a safe closed loop:
+The final report should show:
 
 ```text
-real Kubernetes incident
-→ evidence collection
-→ root-cause explanation
-→ recommended remediation
-→ approval
-→ policy allowlist
-→ real Kubernetes action
-→ verification
-→ audit log
-→ memory
+Verification: healthy
+Audit valid: PASS
+REDIS_URL present=True
 ```
-
-## Safety boundaries
-
-The current demo executor is intentionally narrow. It allows only the demo namespace and demo service:
-
-```text
-namespace: demo
-service: checkout-api
-env var: REDIS_URL
-```
-
-It does not support arbitrary shell commands, deleting resources, reading secrets, or touching production namespaces.
