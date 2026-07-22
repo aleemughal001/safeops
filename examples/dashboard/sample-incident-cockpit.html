@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>SafeOps Incident Cockpit Sample</title>
+  <style>
+    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 40px; background: #f7f8fb; color: #172033; }
+    .card { background: white; border: 1px solid #e5e7eb; border-radius: 16px; padding: 22px; margin-bottom: 18px; box-shadow: 0 10px 28px rgba(16,24,40,0.05); }
+    .badge { display: inline-block; border-radius: 999px; padding: 6px 10px; background: #e7f7ee; color: #0f7a43; font-weight: 700; }
+    code { background: #101828; color: white; padding: 3px 6px; border-radius: 6px; }
+  </style>
+</head>
+<body>
+  <h1>SafeOps Incident Cockpit Sample</h1>
+  <div class="card">
+    <h2>Incident Summary</h2>
+    <p><strong>Incident:</strong> inc_checkout-api_demo</p>
+    <p><strong>Service:</strong> checkout-api</p>
+    <p><strong>Root cause:</strong> REDIS_URL was removed or misconfigured after deployment.</p>
+    <p><span class="badge">Verification healthy</span></p>
+  </div>
+  <div class="card">
+    <h2>CI/CD Correlation</h2>
+    <p>Required environment variable REDIS_URL exists in the known-good manifest but is missing from the deployed/broken manifest.</p>
+  </div>
+  <div class="card">
+    <h2>Approved Remediation</h2>
+    <p><code>kubectl -n demo set env deployment/checkout-api REDIS_URL=redis://redis.demo.svc.cluster.local:6379</code></p>
+  </div>
+</body>
+</html>
