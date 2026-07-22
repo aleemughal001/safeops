@@ -2,30 +2,448 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>SafeOps Incident Cockpit Sample</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>SafeOps Incident Cockpit — inc_checkout-api_demo</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/core@1.0.0-beta20/dist/css/tabler.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.28.1/dist/tabler-icons.min.css">
   <style>
-    body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 40px; background: #f7f8fb; color: #172033; }
-    .card { background: white; border: 1px solid #e5e7eb; border-radius: 16px; padding: 22px; margin-bottom: 18px; box-shadow: 0 10px 28px rgba(16,24,40,0.05); }
-    .badge { display: inline-block; border-radius: 999px; padding: 6px 10px; background: #e7f7ee; color: #0f7a43; font-weight: 700; }
-    code { background: #101828; color: white; padding: 3px 6px; border-radius: 6px; }
+    :root {
+      --safeops-bg: #f3f6fb;
+      --safeops-navy: #0f172a;
+      --safeops-blue: #2563eb;
+      --safeops-card-shadow: 0 14px 38px rgba(15, 23, 42, 0.08);
+    }
+    body { background: var(--safeops-bg); }
+    .safeops-shell { min-height: 100vh; }
+    .safeops-sidebar { background: linear-gradient(180deg, #0f172a 0%, #111827 100%); color: #dbeafe; }
+    .safeops-sidebar .navbar-brand { color: #fff; letter-spacing: .02em; }
+    .safeops-sidebar .nav-link { color: #cbd5e1; border-radius: 10px; margin: 2px 8px; }
+    .safeops-sidebar .nav-link:hover, .safeops-sidebar .nav-link.active { color: #fff; background: rgba(37, 99, 235, .22); }
+    .safeops-hero { background: radial-gradient(circle at top left, rgba(37, 99, 235, .22), transparent 32%), linear-gradient(135deg, #0f172a, #1e3a8a); color: #fff; border-radius: 22px; padding: 28px; box-shadow: var(--safeops-card-shadow); }
+    .safeops-card, .safeops-metric { border: 0; box-shadow: var(--safeops-card-shadow); border-radius: 18px; }
+    .safeops-card .card-header { border-bottom: 1px solid rgba(98, 105, 118, .12); background: transparent; }
+    .safeops-label { font-size: .72rem; letter-spacing: .08em; }
+    .safeops-code { background: #0b1120; color: #e5e7eb; border-radius: 14px; padding: 14px 16px; white-space: pre-wrap; word-break: break-word; margin-top: 14px; }
+    .safeops-kv th { width: 170px; }
+    .safeops-timeline { position: relative; padding-left: 0; }
+    .safeops-step { display: flex; gap: 14px; position: relative; padding-bottom: 18px; }
+    .safeops-step:not(:last-child)::before { content: ""; position: absolute; left: 18px; top: 38px; bottom: 0; border-left: 2px dashed rgba(98, 105, 118, .22); }
+    .safeops-step-icon { z-index: 1; width: 38px; height: 38px; border-radius: 999px; display: inline-flex; align-items: center; justify-content: center; font-size: 20px; flex: 0 0 38px; }
+    .safeops-step-content { padding-top: 2px; }
+    .safeops-pill { border: 1px solid rgba(255,255,255,.20); color: #dbeafe; border-radius: 999px; padding: 6px 10px; display: inline-flex; align-items: center; gap: 6px; }
+    .table td, .table th { vertical-align: top; }
+    code { white-space: normal; }
+    @media (max-width: 991px) { .safeops-sidebar { display: none; } .safeops-hero { border-radius: 0; } }
   </style>
 </head>
 <body>
-  <h1>SafeOps Incident Cockpit Sample</h1>
-  <div class="card">
-    <h2>Incident Summary</h2>
-    <p><strong>Incident:</strong> inc_checkout-api_demo</p>
-    <p><strong>Service:</strong> checkout-api</p>
-    <p><strong>Root cause:</strong> REDIS_URL was removed or misconfigured after deployment.</p>
-    <p><span class="badge">Verification healthy</span></p>
-  </div>
-  <div class="card">
-    <h2>CI/CD Correlation</h2>
-    <p>Required environment variable REDIS_URL exists in the known-good manifest but is missing from the deployed/broken manifest.</p>
-  </div>
-  <div class="card">
-    <h2>Approved Remediation</h2>
-    <p><code>kubectl -n demo set env deployment/checkout-api REDIS_URL=redis://redis.demo.svc.cluster.local:6379</code></p>
+  <div class="page safeops-shell">
+    <aside class="navbar navbar-vertical navbar-expand-lg safeops-sidebar">
+      <div class="container-fluid">
+        <h1 class="navbar-brand navbar-brand-autodark">
+          <i class="ti ti-shield-check me-2"></i>SafeOps
+        </h1>
+        <div class="collapse navbar-collapse show">
+          <ul class="navbar-nav pt-lg-3">
+            <li class="nav-item"><a class="nav-link active" href="#overview"><i class="ti ti-dashboard me-2"></i>Overview</a></li>
+            <li class="nav-item"><a class="nav-link" href="#timeline"><i class="ti ti-route me-2"></i>Demo Flow</a></li>
+            <li class="nav-item"><a class="nav-link" href="#evidence"><i class="ti ti-list-search me-2"></i>Evidence</a></li>
+            <li class="nav-item"><a class="nav-link" href="#prevention"><i class="ti ti-git-pull-request me-2"></i>Prevention</a></li>
+            <li class="nav-item"><a class="nav-link" href="#artifacts"><i class="ti ti-files me-2"></i>Artifacts</a></li>
+          </ul>
+        </div>
+      </div>
+    </aside>
+
+    <div class="page-wrapper">
+      <div class="page-body">
+        <div class="container-xl">
+          <section id="overview" class="safeops-hero mb-4">
+            <div class="row align-items-center">
+              <div class="col-lg-8">
+                <div class="safeops-pill mb-3"><i class="ti ti-lock-check"></i>Policy-gated AI remediation demo</div>
+                <h1 class="display-6 mb-2">Incident Cockpit</h1>
+                <p class="lead mb-3">Kubernetes evidence, CI/CD correlation, approval, execution, verification, audit, and prevention in one reviewer-friendly dashboard.</p>
+                <div class="d-flex flex-wrap gap-2">
+                  <span class="badge bg-success-lt text-success">resolved</span>
+                  <span class="badge bg-success-lt text-success">high-correlation</span>
+                  <span class="badge bg-success-lt text-success">audit valid</span>
+                  <span class="badge bg-success-lt text-success">89%</span>
+                </div>
+              </div>
+              <div class="col-lg-4 mt-4 mt-lg-0">
+                <div class="bg-white text-dark rounded-4 p-3 shadow-sm">
+                  <div class="text-muted safeops-label text-uppercase">Incident</div>
+                  <div class="h3 mb-1">inc_checkout-api_demo</div>
+                  <div class="text-muted">checkout-api · namespace/demo</div>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <div class="row g-3 mb-4">
+            
+      <div class="col-sm-6 col-lg-3">
+        <div class="card safeops-metric h-100">
+          <div class="card-body">
+            <div class="d-flex align-items-center">
+              <span class="avatar bg-success-lt text-success me-3"><i class="ti ti-heartbeat"></i></span>
+              <div>
+                <div class="text-muted text-uppercase safeops-label">Verification</div>
+                <div class="h2 mb-0"><span class="badge bg-success-lt text-success">healthy</span></div>
+                <div class="text-muted small">post-fix checks</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    
+            
+      <div class="col-sm-6 col-lg-3">
+        <div class="card safeops-metric h-100">
+          <div class="card-body">
+            <div class="d-flex align-items-center">
+              <span class="avatar bg-success-lt text-success me-3"><i class="ti ti-file-check"></i></span>
+              <div>
+                <div class="text-muted text-uppercase safeops-label">Audit</div>
+                <div class="h2 mb-0"><span class="badge bg-success-lt text-success">True</span></div>
+                <div class="text-muted small">125 events</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    
+            
+      <div class="col-sm-6 col-lg-3">
+        <div class="card safeops-metric h-100">
+          <div class="card-body">
+            <div class="d-flex align-items-center">
+              <span class="avatar bg-success-lt text-success me-3"><i class="ti ti-message-check"></i></span>
+              <div>
+                <div class="text-muted text-uppercase safeops-label">Approval</div>
+                <div class="h2 mb-0"><span class="badge bg-success-lt text-success">approved</span></div>
+                <div class="text-muted small">aleemughal@local.demo</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    
+            
+      <div class="col-sm-6 col-lg-3">
+        <div class="card safeops-metric h-100">
+          <div class="card-body">
+            <div class="d-flex align-items-center">
+              <span class="avatar bg-primary-lt text-primary me-3"><i class="ti ti-brain"></i></span>
+              <div>
+                <div class="text-muted text-uppercase safeops-label">Confidence</div>
+                <div class="h2 mb-0">89%</div>
+                <div class="text-muted small">root-cause match</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    
+          </div>
+
+          <div class="row g-3">
+            
+      <div class="col-12">
+        <div class="card safeops-card h-100">
+          <div class="card-header"><h3 class="card-title">Incident Summary</h3></div>
+          <div class="card-body"><div class="table-responsive"><table class="table table-vcenter table-sm mb-0 safeops-kv"><tr><th class="text-muted fw-semibold">Incident ID</th><td>inc_checkout-api_demo</td></tr><tr><th class="text-muted fw-semibold">Service</th><td>checkout-api</td></tr><tr><th class="text-muted fw-semibold">Namespace</th><td>demo</td></tr><tr><th class="text-muted fw-semibold">Root cause</th><td>The latest deployment likely removed or misconfigured REDIS_URL for checkout-api.</td></tr><tr><th class="text-muted fw-semibold">Confidence</th><td>89%</td></tr><tr><th class="text-muted fw-semibold">Generated at</th><td>2026-07-22T19:34:22+00:00</td></tr></table></div></div>
+        </div>
+      </div>
+    
+            
+      <div class="col-12">
+        <div class="card safeops-card h-100">
+          <div class="card-header"><h3 class="card-title">End-to-end Flow</h3></div>
+          <div class="card-body"><div class="safeops-timeline">
+            <div class="safeops-step">
+              <div class="safeops-step-icon bg-success-lt text-success"><i class="ti ti-alert-triangle"></i></div>
+              <div class="safeops-step-content">
+                <div class="fw-bold">Kubernetes failure detected <span class="badge bg-success-lt text-success">passed</span></div>
+                <div class="text-muted">checkout-api in namespace demo</div>
+              </div>
+            </div>
+            
+            <div class="safeops-step">
+              <div class="safeops-step-icon bg-success-lt text-success"><i class="ti ti-git-branch"></i></div>
+              <div class="safeops-step-content">
+                <div class="fw-bold">CI/CD correlated <span class="badge bg-success-lt text-success">high-correlation</span></div>
+                <div class="text-muted">Required environment variable REDIS_URL exists in the known-good manifest but is missing from the deployed/broken manifest.</div>
+              </div>
+            </div>
+            
+            <div class="safeops-step">
+              <div class="safeops-step-icon bg-success-lt text-success"><i class="ti ti-message-check"></i></div>
+              <div class="safeops-step-content">
+                <div class="fw-bold">Human approval captured <span class="badge bg-success-lt text-success">approved</span></div>
+                <div class="text-muted">aleemughal@local.demo approved via Slack simulation</div>
+              </div>
+            </div>
+            
+            <div class="safeops-step">
+              <div class="safeops-step-icon bg-success-lt text-success"><i class="ti ti-shield-check"></i></div>
+              <div class="safeops-step-content">
+                <div class="fw-bold">Policy allowed action <span class="badge bg-success-lt text-success">True</span></div>
+                <div class="text-muted">Action is allowlisted and approval requirements are satisfied.</div>
+              </div>
+            </div>
+            
+            <div class="safeops-step">
+              <div class="safeops-step-icon bg-success-lt text-success"><i class="ti ti-terminal-2"></i></div>
+              <div class="safeops-step-content">
+                <div class="fw-bold">Remediation executed <span class="badge bg-success-lt text-success">executed</span></div>
+                <div class="text-muted">kubectl -n demo set env deployment/checkout-api REDIS_URL=redis://redis.demo.svc.cluster.loca…</div>
+              </div>
+            </div>
+            
+            <div class="safeops-step">
+              <div class="safeops-step-icon bg-success-lt text-success"><i class="ti ti-heartbeat"></i></div>
+              <div class="safeops-step-content">
+                <div class="fw-bold">Recovery verified <span class="badge bg-success-lt text-success">healthy</span></div>
+                <div class="text-muted">Rollout, environment, and pod readiness checks passed.</div>
+              </div>
+            </div>
+            
+            <div class="safeops-step">
+              <div class="safeops-step-icon bg-success-lt text-success"><i class="ti ti-file-check"></i></div>
+              <div class="safeops-step-content">
+                <div class="fw-bold">Audit validated <span class="badge bg-success-lt text-success">True</span></div>
+                <div class="text-muted">Tamper-evident audit chain verified.</div>
+              </div>
+            </div>
+            
+            <div class="safeops-step">
+              <div class="safeops-step-icon bg-success-lt text-success"><i class="ti ti-git-pull-request"></i></div>
+              <div class="safeops-step-content">
+                <div class="fw-bold">Prevention package generated <span class="badge bg-success-lt text-success">True</span></div>
+                <div class="text-muted">Local prevention PR draft is available for CI/CD guardrail review.</div>
+              </div>
+            </div>
+            </div></div>
+        </div>
+      </div>
+    
+            <div id="timeline"></div>
+            
+      <div class="col-lg-6">
+        <div class="card safeops-card h-100">
+          <div class="card-header"><h3 class="card-title">CI/CD Correlation</h3></div>
+          <div class="card-body"><div class="table-responsive"><table class="table table-vcenter table-sm mb-0 safeops-kv"><tr><th class="text-muted fw-semibold">Provider</th><td>github-actions</td></tr><tr><th class="text-muted fw-semibold">Repository</th><td>https://github.com/aleemughal001/safeops.git</td></tr><tr><th class="text-muted fw-semibold">Branch</th><td>main</td></tr><tr><th class="text-muted fw-semibold">Commit</th><td>78ede84</td></tr><tr><th class="text-muted fw-semibold">Commit subject</th><td>Milestone 16 add CI smoke tests</td></tr><tr><th class="text-muted fw-semibold">Correlation</th><td>high-correlation</td></tr><tr><th class="text-muted fw-semibold">Detected change</th><td>Required environment variable REDIS_URL exists in the known-good manifest but is missing from the deployed/broken manifest.</td></tr><tr><th class="text-muted fw-semibold">Likely contribution</th><td>The latest deployment likely removed or failed to include REDIS_URL, matching the Kubernetes CrashLoopBackOff evidence.</td></tr></table></div></div>
+        </div>
+      </div>
+    
+            
+      <div class="col-lg-6">
+        <div class="card safeops-card h-100">
+          <div class="card-header"><h3 class="card-title">Slack Approval</h3></div>
+          <div class="card-body"><div class="table-responsive"><table class="table table-vcenter table-sm mb-0 safeops-kv"><tr><th class="text-muted fw-semibold">Channel</th><td>#safeops-approvals</td></tr><tr><th class="text-muted fw-semibold">Decision</th><td>approved</td></tr><tr><th class="text-muted fw-semibold">Approved by</th><td>aleemughal@local.demo</td></tr><tr><th class="text-muted fw-semibold">Decision time</th><td>2026-07-22T00:00:00Z</td></tr><tr><th class="text-muted fw-semibold">Risk level</th><td>low</td></tr><tr><th class="text-muted fw-semibold">Blast radius</th><td>checkout-api in namespace demo only</td></tr></table></div></div>
+        </div>
+      </div>
+    
+            
+      <div class="col-lg-6">
+        <div class="card safeops-card h-100">
+          <div class="card-header"><h3 class="card-title">Policy Decision</h3></div>
+          <div class="card-body"><div class="table-responsive"><table class="table table-vcenter table-sm mb-0 safeops-kv"><tr><th class="text-muted fw-semibold">Policy allowed</th><td>True</td></tr><tr><th class="text-muted fw-semibold">Reason</th><td>Action is allowlisted and approval requirements are satisfied.</td></tr><tr><th class="text-muted fw-semibold">Action</th><td>set_env_deployment</td></tr><tr><th class="text-muted fw-semibold">Resource</th><td>deployment</td></tr><tr><th class="text-muted fw-semibold">Risk level</th><td>low</td></tr></table></div></div>
+        </div>
+      </div>
+    
+            
+      <div class="col-lg-6">
+        <div class="card safeops-card h-100">
+          <div class="card-header"><h3 class="card-title">Executed Remediation</h3></div>
+          <div class="card-body"><div class="table-responsive"><table class="table table-vcenter table-sm mb-0 safeops-kv"><tr><th class="text-muted fw-semibold">Execution status</th><td>executed</td></tr><tr><th class="text-muted fw-semibold">Mode</th><td>kubernetes</td></tr><tr><th class="text-muted fw-semibold">Message</th><td>deployment.apps/checkout-api env updated</td></tr><tr><th class="text-muted fw-semibold">Started</th><td>2026-07-22T00:00:01Z</td></tr><tr><th class="text-muted fw-semibold">Finished</th><td>2026-07-22T00:00:02Z</td></tr></table></div><pre class="safeops-code"><code>kubectl -n demo set env deployment/checkout-api REDIS_URL=redis://redis.demo.svc.cluster.local:6379</code></pre></div>
+        </div>
+      </div>
+    
+            
+      <div class="col-lg-6">
+        <div class="card safeops-card h-100">
+          <div class="card-header"><h3 class="card-title">Verification Checks</h3></div>
+          <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-vcenter table-sm mb-0">
+          <thead><tr><th>Check</th><th>Status</th><th>Detail</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><span class="fw-semibold">rollout_status</span></td>
+              <td><span class="badge bg-success-lt text-success">passed</span></td>
+              <td class="text-muted">desired=1, updated=1, ready=1, available=1</td>
+            </tr>
+            
+            <tr>
+              <td><span class="fw-semibold">deployment_env</span></td>
+              <td><span class="badge bg-success-lt text-success">passed</span></td>
+              <td class="text-muted">REDIS_URL present=True</td>
+            </tr>
+            
+            <tr>
+              <td><span class="fw-semibold">pod_readiness</span></td>
+              <td><span class="badge bg-success-lt text-success">passed</span></td>
+              <td class="text-muted">ready_pods=1</td>
+            </tr>
+            </tbody>
+        </table>
+      </div>
+    </div>
+        </div>
+      </div>
+    
+            
+      <div class="col-lg-6">
+        <div class="card safeops-card h-100">
+          <div class="card-header"><h3 class="card-title">Audit Chain</h3></div>
+          <div class="card-body"><div class="table-responsive"><table class="table table-vcenter table-sm mb-0 safeops-kv"><tr><th class="text-muted fw-semibold">Audit valid</th><td>True</td></tr><tr><th class="text-muted fw-semibold">Event count</th><td>125</td></tr><tr><th class="text-muted fw-semibold">Latest hash</th><td>abcdef123456</td></tr><tr><th class="text-muted fw-semibold">Audit path</th><td>/tmp/safeops/audit-log.jsonl</td></tr><tr><th class="text-muted fw-semibold">Issues</th><td>none</td></tr></table></div></div>
+        </div>
+      </div>
+    
+            <div id="evidence"></div>
+            
+      <div class="col-12">
+        <div class="card safeops-card h-100">
+          <div class="card-header"><h3 class="card-title">Kubernetes Evidence</h3></div>
+          <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-vcenter table-sm mb-0">
+          <thead><tr><th>#</th><th>Source</th><th>Evidence summary</th><th>Raw ref</th></tr></thead>
+          <tbody>
+            <tr>
+              <td class="text-muted">1</td>
+              <td><span class="badge bg-info-lt text-info">kubernetes.pod_status</span></td>
+              <td>pod=checkout-api; ready=False; restart_count=2; last_terminated_reason=Error</td>
+              <td class="text-muted"><code>checkout-api-123</code></td>
+            </tr>
+            
+            <tr>
+              <td class="text-muted">2</td>
+              <td><span class="badge bg-info-lt text-info">kubernetes.deployment_config</span></td>
+              <td>Deployment checkout-api is missing expected environment variable REDIS_URL</td>
+              <td class="text-muted"><code>checkout-api</code></td>
+            </tr>
+            
+            <tr>
+              <td class="text-muted">3</td>
+              <td><span class="badge bg-info-lt text-info">kubernetes.event</span></td>
+              <td>Warning BackOff: Back-off restarting failed container checkout-api</td>
+              <td class="text-muted"><code>evt-1</code></td>
+            </tr>
+            </tbody>
+        </table>
+      </div>
+      
+    </div>
+        </div>
+      </div>
+    
+            <div id="prevention"></div>
+            
+      <div class="col-12">
+        <div class="card safeops-card h-100">
+          <div class="card-header"><h3 class="card-title">Prevention PR Package</h3></div>
+          <div class="card-body"><div class="table-responsive"><table class="table table-vcenter table-sm mb-0 safeops-kv"><tr><th class="text-muted fw-semibold">PR title</th><td>/tmp/test-safeops-demo/prevention-pr/PR_TITLE.txt (available)</td></tr><tr><th class="text-muted fw-semibold">PR body</th><td>/tmp/test-safeops-demo/prevention-pr/PR_BODY.md (available)</td></tr><tr><th class="text-muted fw-semibold">Required env policy</th><td>/tmp/test-safeops-demo/prevention-pr/.safeops/prevention/checkout-api-required-env.yaml (available)</td></tr><tr><th class="text-muted fw-semibold">CI required-env check</th><td>/tmp/test-safeops-demo/prevention-pr/ci/check_required_env.py (available)</td></tr><tr><th class="text-muted fw-semibold">GitHub Actions guardrail</th><td>/tmp/test-safeops-demo/prevention-pr/.github/workflows/safeops-required-env-check.yml (available)</td></tr></table></div></div>
+        </div>
+      </div>
+    
+            <div id="artifacts"></div>
+            
+      <div class="col-12">
+        <div class="card safeops-card h-100">
+          <div class="card-header"><h3 class="card-title">Raw Demo Artifacts</h3></div>
+          <div class="card-body"><div class="row g-3">
+            <div class="col-md-6 col-xl-4">
+              <div class="border rounded p-3 h-100">
+                <div class="d-flex align-items-center mb-2">
+                  <i class="ti ti-file-description me-2 text-warning"></i>
+                  <span class="fw-semibold">Incident Cockpit HTML</span>
+                  <span class="ms-auto"><span class="badge bg-danger-lt text-danger">missing</span></span>
+                </div>
+                <code class="text-muted small">/tmp/test-safeops-demo/incident-cockpit.html</code>
+              </div>
+            </div>
+            
+            <div class="col-md-6 col-xl-4">
+              <div class="border rounded p-3 h-100">
+                <div class="d-flex align-items-center mb-2">
+                  <i class="ti ti-file-description me-2 text-success"></i>
+                  <span class="fw-semibold">Remediation JSON</span>
+                  <span class="ms-auto"><span class="badge bg-success-lt text-success">available</span></span>
+                </div>
+                <code class="text-muted small">/tmp/test-safeops-demo/latest_remediation_output.json</code>
+              </div>
+            </div>
+            
+            <div class="col-md-6 col-xl-4">
+              <div class="border rounded p-3 h-100">
+                <div class="d-flex align-items-center mb-2">
+                  <i class="ti ti-file-description me-2 text-success"></i>
+                  <span class="fw-semibold">CI/CD Context JSON</span>
+                  <span class="ms-auto"><span class="badge bg-success-lt text-success">available</span></span>
+                </div>
+                <code class="text-muted small">/tmp/test-safeops-demo/latest_cicd_context.json</code>
+              </div>
+            </div>
+            
+            <div class="col-md-6 col-xl-4">
+              <div class="border rounded p-3 h-100">
+                <div class="d-flex align-items-center mb-2">
+                  <i class="ti ti-file-description me-2 text-success"></i>
+                  <span class="fw-semibold">Slack Card JSON</span>
+                  <span class="ms-auto"><span class="badge bg-success-lt text-success">available</span></span>
+                </div>
+                <code class="text-muted small">/tmp/test-safeops-demo/latest_slack_approval_card.json</code>
+              </div>
+            </div>
+            
+            <div class="col-md-6 col-xl-4">
+              <div class="border rounded p-3 h-100">
+                <div class="d-flex align-items-center mb-2">
+                  <i class="ti ti-file-description me-2 text-success"></i>
+                  <span class="fw-semibold">Slack Decision JSON</span>
+                  <span class="ms-auto"><span class="badge bg-success-lt text-success">available</span></span>
+                </div>
+                <code class="text-muted small">/tmp/test-safeops-demo/latest_slack_approval_decision.json</code>
+              </div>
+            </div>
+            
+            <div class="col-md-6 col-xl-4">
+              <div class="border rounded p-3 h-100">
+                <div class="d-flex align-items-center mb-2">
+                  <i class="ti ti-file-description me-2 text-success"></i>
+                  <span class="fw-semibold">Audit Verification JSON</span>
+                  <span class="ms-auto"><span class="badge bg-success-lt text-success">available</span></span>
+                </div>
+                <code class="text-muted small">/tmp/test-safeops-demo/latest_audit_verification.json</code>
+              </div>
+            </div>
+            
+            <div class="col-md-6 col-xl-4">
+              <div class="border rounded p-3 h-100">
+                <div class="d-flex align-items-center mb-2">
+                  <i class="ti ti-file-description me-2 text-success"></i>
+                  <span class="fw-semibold">Prevention PR directory</span>
+                  <span class="ms-auto"><span class="badge bg-success-lt text-success">available</span></span>
+                </div>
+                <code class="text-muted small">/tmp/test-safeops-demo/prevention-pr</code>
+              </div>
+            </div>
+            </div></div>
+        </div>
+      </div>
+    
+          </div>
+
+          <div class="text-center text-muted my-4">
+            Generated locally by SafeOps demo tooling at 2026-07-22T19:34:22+00:00. Tabler assets load from CDN for presentation styling; SafeOps data stays local.
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </body>
 </html>
