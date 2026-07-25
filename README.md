@@ -1,5 +1,94 @@
 # SafeOps
 
+
+<!-- SAFEOPS_REAL_DEMO_START -->
+
+## SafeOps real Kubernetes demo
+
+SafeOps is an open-source safety layer for AI-assisted DevOps remediation. The current demo shows a real Kubernetes deployment failure, generates evidence, creates an approval-ready remediation plan, records approval, executes only an allowlisted recovery action, verifies recovery, and produces a tamper-evident audit trail.
+
+**Latest stable demo tag:** `v2.8-investor-evidence-bundle`
+
+### One-command recovery demo
+
+```bash
+./scripts/demo_run_real_safeops_loop.sh demo aleemughal001
+```
+
+This command runs the full real SafeOps loop:
+
+```text
+reset healthy workload
+→ inject bad-image rollout failure
+→ detect and group the Kubernetes incident
+→ generate evidence and remediation plan
+→ create approval request and approval decision
+→ execute allowlisted rollback only after approval
+→ verify the deployment recovered
+→ generate and verify tamper-evident audit trail
+→ print executive summary
+```
+
+Expected final summary:
+
+```text
+SafeOps Real Loop Executive Summary
+Final cluster state: healthy
+Open root incidents after recovery: 0
+Executed allowlisted actions: 1
+Verified healthy actions: 1
+Blocked actions: 0
+Audit verification valid: True
+Result: PASSED
+```
+
+### Investor/customer evidence bundle
+
+```bash
+./scripts/demo_create_investor_bundle.sh demo aleemughal001
+```
+
+This creates a shareable bundle under `/tmp/safeops-demo/` with:
+
+```text
+executive summary
+incident evidence report
+remediation plan
+approval request
+approval decision
+execution record
+tamper-evident audit trail
+final cluster state
+SHA-256 manifest
+zip archive
+```
+
+Typical output:
+
+```text
+SafeOps investor demo evidence bundle created.
+Files packaged: 16
+Demo result: PASSED
+Audit verification valid: True
+Executed allowlisted actions: 1
+```
+
+### What the demo proves
+
+- SafeOps can detect a real Kubernetes rollout failure.
+- SafeOps groups noisy symptoms into one root incident.
+- SafeOps generates evidence-backed remediation plans.
+- SafeOps requires human approval before real changes.
+- SafeOps executes only typed, allowlisted actions.
+- SafeOps verifies recovery after execution.
+- SafeOps produces tamper-evident audit records for trust and governance.
+
+### Safety boundaries
+
+SafeOps does **not** run arbitrary shell commands in this demo. The approved executor is limited to safe typed Kubernetes actions, such as rollback, and it records the result for audit review.
+
+<!-- SAFEOPS_REAL_DEMO_END -->
+
 **Evidence-driven safe remediation for Kubernetes incidents.**
 
 SafeOps is an open-source prototype of a safety layer for AI-assisted DevOps. It demonstrates how an operational assistant can investigate a Kubernetes failure, correlate it with CI/CD context, request human approval, execute a scoped remediation, verify recovery, write an audit trail, remember the incident, and generate a prevention handoff.
