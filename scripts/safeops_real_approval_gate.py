@@ -393,7 +393,8 @@ def main() -> int:
     print("SafeOps approval decision recorded.")
     print(f"Decision: {args.decision}")
     print(f"Approver: {args.approver}")
-    print(f"Execution allowed by approval gate: False")
+    print("Execution handoff created: True")
+    print("Executor will enforce approval policy and action allowlist.")
     print(f"Decision JSON: {args.decision_json_out}")
     print(f"Decision Markdown: {args.decision_md_out}")
     return 0

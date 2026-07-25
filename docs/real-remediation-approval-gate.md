@@ -76,7 +76,8 @@ Approval requests generated: 1
 Approve/reject still shows:
 
 ```text
-Execution allowed by approval gate: False
+Execution handoff created: True
+Executor will enforce approval policy and action allowlist.
 ```
 
 This is intentional. Approval is not execution.
