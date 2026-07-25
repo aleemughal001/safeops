@@ -1,61 +1,76 @@
 # SafeOps Demo Video Script
 
-This guide is for recording a short reviewer/investor demo of SafeOps.
-
 ## Goal
 
-Record a 2-3 minute screen walkthrough that shows SafeOps as a safe AI-assisted DevOps remediation prototype.
+Record a short 2-3 minute video that shows SafeOps as a trust layer for AI-assisted DevOps remediation.
 
-## Recording flow
+## Video structure
 
-1. Open the GitHub repository README.
-2. Show the Actions tab with SafeOps CI passing.
-3. Run the one-command investor demo.
-4. Open the redesigned Incident Cockpit dashboard.
-5. Explain the safety model: evidence, approval, policy, execution, verification, audit, prevention.
+### 0:00-0:20 Opening
 
-## Command to run before recording
+Say:
+
+> Hi, this is SafeOps. It is an open-source safety layer for AI-assisted DevOps remediation. The goal is not to let AI run random commands in production. The goal is to detect incidents, collect evidence, request approval, execute only allowlisted actions, verify recovery, and preserve an audit trail.
+
+Show:
+
+- GitHub release page
+- `v1.0.1-demo-polish`
+
+### 0:20-0:50 Problem
+
+Say:
+
+> Today, teams have observability tools and CI/CD tools, but incident response is still manual. Engineers have to connect logs, Kubernetes events, rollout history, approval, rollback, verification, and audit evidence under pressure.
+
+Show:
+
+- README or release notes
+- Mention the evidence bundle asset
+
+### 0:50-1:45 Live demo
+
+Run:
 
 ```bash
-cd ~/safeops-starter/safeops-starter
-./scripts/demo_stop_services.sh
-DOCKER_BUILDKIT=0 ./scripts/demo_run_investor.sh
+./scripts/demo_create_investor_bundle.sh demo aleemughal001
 ```
 
-## Command to open the dashboard
+Say while it runs:
 
-```bash
-python3 -m http.server 8088 --directory /tmp/safeops-demo/investor-demo-package
-```
+> The demo starts from a healthy Kubernetes deployment, injects a real bad-image rollout failure, detects the issue, groups noisy Kubernetes symptoms into one root incident, generates a remediation plan, records approval, executes an allowlisted rollback, verifies the workload is healthy, and creates a tamper-evident audit trail.
 
-Open:
+Point out:
 
-```text
-http://127.0.0.1:8088/incident-cockpit.html
-```
+- Root incidents detected: 1
+- Remediation plan generated
+- Approval decision recorded
+- Execution handoff created
+- Executed actions: 1
+- Verified healthy: 1
+- Audit verification valid: True
+- Demo result: PASSED
 
-## 30-second pitch
+### 1:45-2:20 Evidence bundle
 
-SafeOps is an open-source safety layer for AI-assisted DevOps remediation. It detects production-style Kubernetes failures, explains the root cause with evidence, correlates the incident with CI/CD changes, requests human approval, checks policy, executes only scoped approved actions, verifies recovery, records an audit trail, and creates a prevention handoff so the same outage does not repeat.
+Say:
 
-## 2-minute narration
+> At the end, SafeOps packages the evidence into a bundle that can be shared with investors, customers, or technical reviewers.
 
-Hi, this is SafeOps, an open-source safety layer for AI-assisted DevOps remediation.
+Show:
 
-The problem is that production incidents are fragmented across Kubernetes logs, CI/CD history, chat approvals, manual commands, and audit records. SafeOps brings these pieces into one controlled workflow.
+- Bundle zip path
+- GitHub release asset
 
-In this demo, the checkout-api service breaks because a required environment variable, REDIS_URL, is missing after a deployment.
+### 2:20-2:45 Closing
 
-SafeOps collects Kubernetes evidence including pod status, logs, events, and deployment configuration. It identifies that REDIS_URL is missing from the deployment.
+Say:
 
-Next, SafeOps correlates the failure with CI/CD context. It compares the known-good manifest with the broken manifest and finds that REDIS_URL existed before but is missing in the deployed version.
+> This version proves the core loop: real incident detection, evidence-based planning, human approval, safe execution, verification, and auditability. The next step is feedback from DevOps engineers, SREs, platform teams, and early design partners.
 
-SafeOps does not blindly change infrastructure. It generates a Slack-style approval request with the root cause, proposed command, risk level, blast radius, and safety controls.
+## Recording tips
 
-After approval, SafeOps checks the action against its policy allowlist. The fix is scoped only to checkout-api in the demo namespace. SafeOps then restores REDIS_URL using kubectl set env.
-
-After execution, SafeOps verifies the rollout, confirms the environment variable is restored, checks pod readiness, writes an audit log, saves incident memory, and creates a prevention PR draft.
-
-Finally, the redesigned Incident Cockpit shows the full story in one place: incident summary, CI/CD correlation, Slack approval, policy decision, remediation, verification, audit, Kubernetes evidence, and prevention artifacts.
-
-The core idea is simple: AI should not directly operate production infrastructure without controls. SafeOps makes AI-assisted remediation evidence-driven, approval-gated, policy-controlled, verified, auditable, and preventive.
+- Keep the video under 3 minutes.
+- Do not explain every file.
+- Focus on the story: failure -> evidence -> approval -> safe recovery -> audit.
+- Use the latest release link: `v1.0.1-demo-polish`.
